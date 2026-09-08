@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FrED Trek — Options Creation Construction Space</title>
+<style>
+/* ============================================================
+   IMD palette
+   ============================================================ */
+:root{
+  --lac-leman:#005DC4;
+  --lac-leman-dark:#004a9e;
+  --lac-leman-tint:#e8f1fc;
+  --sunburst:#FC6B27;
+  --moss:#0E6347;
+  --midnight:#001E62;
+  --ink:#12233B;
+  --ink-soft:#4a5c74;
+  --paper:#ffffff;
+  --canvas:#f3f7fc;
+  --line:#d3dfec;
+  --ok:#0E6347;
+  --radius:10px;
+  --shadow:0 1px 2px rgba(0,32,80,.10), 0 6px 18px rgba(0,32,80,.07);
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--canvas);
+  color:var(--ink);
+  font-family:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  font-size:16px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1320px;margin:0 auto;padding:20px 20px 56px}
+
+/* ---------- control bar ---------- */
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:0 0 14px}
+button{
+  font:inherit;border-radius:8px;border:1px solid transparent;
+  padding:10px 18px;cursor:pointer;
+  transition:background .15s,border-color .15s,color .15s;
+}
+button:focus-visible{outline:3px solid #7fb2ee;outline-offset:2px}
+.btn-primary{background:var(--lac-leman);color:#fff}
+.btn-primary:hover{background:var(--lac-leman-dark)}
+.btn-primary[disabled]{background:#9fb6cf;cursor:not-allowed}
+.btn-ghost{background:var(--paper);border-color:var(--line);color:var(--ink)}
+.btn-ghost:hover{border-color:var(--lac-leman);color:var(--lac-leman)}
+.attempts{display:flex;align-items:center;gap:8px;font-size:.9rem;color:var(--ink-soft)}
+.pips{display:flex;gap:5px}
+.pip{width:11px;height:11px;border-radius:50%;border:2px solid var(--lac-leman)}
+.pip.spent{background:var(--lac-leman)}
+.counter{margin-left:auto;font-size:.9rem;color:var(--ink-soft)}
+.counter b{color:var(--ink);font-weight:600}
+
+/* ---------- feedback ---------- */
+.feedback{border-radius:8px;font-size:.93rem;margin-bottom:16px}
+.feedback.show{padding:12px 16px;border:1px solid var(--line);background:var(--paper)}
+.feedback.good{border-color:#a9cdbd;background:#eef7f3;color:#0b4d38}
+.feedback.mixed{border-color:#f0c19f;background:#fdf3ec;color:#8a3d13}
+.feedback.solution{border-color:var(--lac-leman);background:var(--lac-leman-tint);color:var(--lac-leman-dark)}
+
+/* ---------- map ---------- */
+.map{
+  position:relative;
+  background:var(--paper);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:20px;
+}
+.mapgrid{
+  display:grid;
+  grid-template-columns:minmax(140px,178px) minmax(0,1fr) minmax(190px,236px);
+  gap:16px 40px;
+  align-items:stretch;
+}
+.quest{
+  border-left:5px solid var(--lac-leman);
+  background:var(--lac-leman-tint);
+  border-radius:0 8px 8px 0;
+  padding:16px 16px 18px;
+  display:flex;flex-direction:column;justify-content:center;
+}
+.quest .label{font-size:.75rem;color:var(--lac-leman-dark);font-weight:600;margin-bottom:8px}
+.quest p{margin:0;font-size:.92rem;font-weight:500;line-height:1.45}
+
+.colheads{
+  display:grid;
+  grid-template-columns:minmax(150px,1fr) minmax(0,1.35fr);
+  gap:14px;
+  font-size:.8rem;color:var(--ink-soft);
+  margin-bottom:8px;padding-left:14px;
+}
+.branch{
+  display:grid;
+  grid-template-columns:minmax(150px,1fr) minmax(0,1.35fr);
+  gap:14px;
+  padding:12px 0 12px 14px;
+  border-left:5px solid var(--line);
+  border-radius:4px 0 0 4px;
+  margin-bottom:10px;
+}
+.branch:last-child{margin-bottom:0}
+.branch[data-colour="sunburst"]{border-left-color:var(--sunburst);background:rgba(252,107,39,.05)}
+.branch[data-colour="moss"]{border-left-color:var(--moss);background:rgba(14,99,71,.05)}
+.branch[data-colour="midnight"]{border-left-color:var(--midnight);background:rgba(0,30,98,.05)}
+.sublevel{display:grid;gap:8px}
+
+/* ---------- options column ---------- */
+.optioncol{display:flex;flex-direction:column;gap:10px;justify-content:center}
+.optioncol .ohead{font-size:.8rem;color:var(--ink-soft);margin-bottom:-2px}
+.planslot{
+  min-height:92px;
+  border:2px dashed var(--line);
+  border-radius:8px;
+  background:#fafcfe;
+  display:flex;align-items:stretch;padding:4px;
+}
+.planslot.over,.planslot.armed{border-color:var(--lac-leman);background:var(--lac-leman-tint)}
+.planslot.filled{border-style:solid;border-color:transparent;background:transparent;padding:0}
+.planslot.linkable{cursor:pointer}
+
+/* ---------- slots ---------- */
+.slot{
+  min-height:56px;
+  border:2px dashed var(--line);
+  border-radius:8px;
+  background:#fafcfe;
+  display:flex;align-items:stretch;padding:4px;
+}
+.slot.l1{align-items:center;border-style:solid;border-color:transparent;background:transparent;padding:0}
+.slot.filled{border-style:solid;border-color:transparent;background:transparent;padding:0}
+.slot.emptied{border-color:rgba(0,32,80,.16);background:transparent}
+
+/* ---------- cards ---------- */
+.card{
+  width:100%;
+  border:1px solid var(--line);
+  border-left:4px solid #9db4cd;
+  background:var(--paper);
+  border-radius:8px;
+  padding:11px 14px;
+  font-size:.88rem;line-height:1.35;
+  user-select:none;touch-action:none;
+  position:relative;
+  box-shadow:0 1px 2px rgba(0,32,80,.08);
+  display:flex;align-items:center;
+  min-height:50px;
+}
+.card.grab{cursor:grab}
+.card:focus-visible{outline:3px solid #7fb2ee;outline-offset:2px}
+.card.selected{border-color:var(--lac-leman);box-shadow:0 0 0 3px rgba(0,93,196,.22)}
+.card.dragging{opacity:.28}
+.card.fixed{cursor:default}
+.card[data-colour="sunburst"]{border-left-color:var(--sunburst);background:rgba(252,107,39,.07)}
+.card[data-colour="moss"]{border-left-color:var(--moss);background:rgba(14,99,71,.07)}
+.card[data-colour="midnight"]{border-left-color:var(--midnight);background:rgba(0,30,98,.07)}
+.card.l1text{font-weight:600}
+.card.plan{font-weight:600;min-height:84px;border-left-color:var(--lac-leman)}
+.card.plan[data-plancolour="sunburst"]{border-left-color:var(--sunburst)}
+.card.plan[data-plancolour="moss"]{border-left-color:var(--moss)}
+.card.locked{padding-right:32px}
+.card.locked::after{
+  content:"";position:absolute;top:50%;right:12px;margin-top:-7px;
+  width:13px;height:8px;
+  border-left:2px solid var(--ok);border-bottom:2px solid var(--ok);
+  transform:rotate(-45deg);
+}
+.card.rejected{animation:nudge .4s ease;border-color:#e8a98f}
+@keyframes nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+@media (prefers-reduced-motion:reduce){.card.rejected{animation:none}}
+#ghost{
+  position:fixed;z-index:60;pointer-events:none;width:230px;
+  transform:rotate(-1deg);box-shadow:0 10px 26px rgba(0,32,80,.25);
+}
+
+/* ---------- connector overlay ---------- */
+.wires{position:absolute;inset:0;pointer-events:none;z-index:5;overflow:visible}
+
+/* ---------- three banks ---------- */
+.banks{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:14px;
+  margin-top:20px;
+  align-items:start;
+}
+.bank{
+  background:var(--paper);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow);
+  padding:16px 18px;
+}
+.bank h2{font-size:.98rem;margin:0 0 4px;font-weight:600}
+.bank .sub{margin:0 0 12px;font-size:.85rem;color:var(--ink-soft)}
+.bank-body{display:grid;gap:9px;min-height:74px}
+.bank-body.over{outline:2px dashed var(--lac-leman);outline-offset:6px;border-radius:8px}
+.bank-empty{color:var(--ink-soft);font-size:.86rem;padding:10px 0}
+
+/* connector inventory */
+.pointers{display:flex;flex-wrap:wrap;gap:10px;align-items:center;min-height:44px}
+.pointer{display:block}
+.pointer.used{opacity:.16}
+.pcount{font-size:.85rem;color:var(--ink-soft);margin-top:10px}
+
+/* ---------- modal ---------- */
+.scrim{
+  position:fixed;inset:0;background:rgba(4,20,45,.55);
+  display:none;align-items:center;justify-content:center;padding:20px;z-index:80;
+}
+.scrim.open{display:flex}
+.modal{
+  background:var(--paper);border-radius:12px;max-width:460px;width:100%;
+  padding:26px 28px;box-shadow:0 20px 50px rgba(0,20,60,.35);
+}
+.modal h3{margin:0 0 10px;font-size:1.15rem}
+.modal p{margin:0 0 20px;font-size:.94rem;color:var(--ink-soft)}
+.modal .row{display:flex;gap:10px;flex-wrap:wrap}
+
+@media (max-width:980px){
+  .mapgrid{grid-template-columns:1fr;gap:12px}
+  .optioncol{flex-direction:row;gap:10px}
+  .planslot{flex:1}
+  .banks{grid-template-columns:1fr}
+  .wires{display:none}
+}
+@media (max-width:720px){
+  .wrap{padding:14px 12px 44px}
+  .colheads,.branch{grid-template-columns:1fr;gap:8px}
+  .colheads span:last-child{display:none}
+  .optioncol{flex-direction:column}
+  .counter{margin-left:0;width:100%}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="controls">
+    <button class="btn-primary" id="checkBtn">Check my work</button>
+    <button class="btn-ghost" id="resetBtn">Start new</button>
+    <div class="attempts">
+      <span>Attempts</span>
+      <div class="pips" id="pips"></div>
+    </div>
+    <div class="counter" id="counter"></div>
+  </div>
+
+  <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+
+  <section class="map" id="mapPanel" aria-label="Options creation construction space">
+    <svg class="wires" id="wires" aria-hidden="true"></svg>
+    <div class="mapgrid">
+      <aside class="quest">
+        <span class="label">Question-quest</span>
+        <p id="questText"></p>
+      </aside>
+      <div>
+        <div class="colheads"><span>Level 1</span><span>Level 2</span></div>
+        <div id="branches"></div>
+      </div>
+      <div class="optioncol" id="optioncol">
+        <div class="ohead">Options</div>
+        <div class="planslot" data-planslot="p1"></div>
+        <div class="planslot" data-planslot="p2"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="banks">
+    <section class="bank" id="disposalBank">
+      <h2>Ideas disposal</h2>
+      <p class="sub">Remove here the ideas from the solution map the captains rejected as implausible.</p>
+      <div class="bank-body" id="disposal"></div>
+    </section>
+
+    <section class="bank">
+      <h2>Options bank</h2>
+      <p class="sub">Choose 2 options the captains came up with.</p>
+      <div class="bank-body" id="options"></div>
+    </section>
+
+    <section class="bank">
+      <h2>Connectors indicator</h2>
+      <p class="sub">Drag an idea from Level 2 onto the option it contributed to, and a pointer
+         connects the two. Every idea you connect uses up one indicator.</p>
+      <div class="pointers" id="pointers"></div>
+      <div class="pcount" id="pcount"></div>
+    </section>
+  </div>
+</div>
+
+<div class="scrim" id="scrim" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <h3 id="modalTitle">Three attempts used</h3>
+    <p>Would you like to see the version from the program coaching team?</p>
+    <div class="row">
+      <button class="btn-primary" id="yesBtn">Yes, show me their version</button>
+      <button class="btn-ghost" id="noBtn">No, give me three more attempts</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   CONFIGURATION — everything editable lives in this block.
+   ================================================================ */
+const CONFIG = {
+
+  attemptsPerRound: 3,
+
+  questionQuest: "How should we find the Persephone ship and speak to her crew fast enough, " +
+                 "given that the air on board runs out in four days?",
+
+  /* The solution map starts in its correct state. Each level-2 idea carries:
+       rejected: true  -> the captains threw it out as implausible, so it belongs
+                          in the Ideas disposal
+       plan: "o1"/"o2" -> the option this idea contributed to, for the connectors
+       optional: true  -> accepted either way: in the disposal, or left on the
+                          map with no pointer attached to it
+
+     "By looking for the last known point" is optional. In Recording 3 the
+     captains reject only the wreckage and the Deep Listening Array and say
+     seven ideas are left, but this idea feeds neither plan, so throwing it
+     out is just as defensible as leaving it standing. What is never accepted
+     is connecting it to a plan. */
+  branches: [
+    {
+      id:"b1", colour:"sunburst",
+      label:"By searching the ship without external help \u2013 looking ourselves",
+      ideas:[
+        { id:"i-road",      text:"By following for the plasma trail - the road of light", plan:"o1" },
+        { id:"i-wreck",     text:"By looking for the ship wreckage", rejected:true },
+        { id:"i-lastpoint", text:"By looking for the last known point", optional:true }
+      ]
+    },
+    {
+      id:"b2", colour:"moss",
+      label:"By searching the ship with external help \u2013 asking someone in the system",
+      ideas:[
+        { id:"i-dragon", text:"By asking the Dragon ship politely", plan:"o2" },
+        { id:"i-array",  text:"By listening to a field of antennas at the edge of the system", rejected:true },
+        { id:"i-miners", text:"By asking the miners", plan:"o2" }
+      ]
+    },
+    {
+      id:"b3", colour:"midnight",
+      label:"By asking the ship to respond",
+      ideas:[
+        { id:"i-emergency", text:"By using the emergency channel to get a response", plan:"o1" },
+        { id:"i-buoys",     text:"By using the listening buoys - throwing small radios out - to get a response", plan:"o1" },
+        { id:"i-beacon",    text:"By using the old beacon tone to get a response", plan:"o2" }
+      ]
+    }
+  ],
+
+  /* Four options in the bank, two of them the captains' real plans. */
+  options: [
+    { id:"o1", text:"Plan one. The Quiet Net",                      correct:true  },
+    { id:"o2", text:"Plan two. Knock on the Dragon's Door",         correct:true  },
+    { id:"o3", text:"Plan one. Fly after wreckage",                 correct:false },
+    { id:"o4", text:"Plan two. Do nothing aka very strategic plan",  correct:false }
+  ],
+
+  /* The colour an option and its arrows take, by the slot it is placed in.
+     Tied to the slot rather than the option so that placing a card never
+     hints at whether it was the right one. */
+  planSlotColours: { p1:"sunburst", p2:"moss" }
+};
+
+/* ================================================================
+   MODEL
+   ================================================================ */
+const IDEAS = {};       // id -> {id, text, branchId, colour, rejected, plan}
+const OPTIONS = {};     // id -> option
+const IDEA_SLOTS = [];  // slotId in map order
+
+CONFIG.branches.forEach(br => {
+  br.ideas.forEach((idea, i) => {
+    IDEAS[idea.id] = Object.assign({}, idea, { branchId:br.id, colour:br.colour,
+                                               slot:"s-"+br.id+"-"+i });
+    IDEA_SLOTS.push("s-"+br.id+"-"+i);
+  });
+});
+CONFIG.options.forEach(o => { OPTIONS[o.id] = o; });
+
+const REJECTED     = Object.values(IDEAS).filter(i => i.rejected).map(i => i.id);
+const OPTIONAL     = Object.values(IDEAS).filter(i => i.optional).map(i => i.id);
+const LINKED_IDEAS = Object.values(IDEAS).filter(i => i.plan && !i.rejected).map(i => i.id);
+const CORRECT_OPTS = CONFIG.options.filter(o => o.correct).map(o => o.id);
+const PLAN_SLOTS   = ["p1","p2"];
+const CONNECTORS    = LINKED_IDEAS.length;                       // pointers in the bank
+/* Optional ideas are right in either place, so they are not part of the target;
+   disposing one is accepted and locked, it just isn't something to achieve. */
+const TOTAL_CORRECT = REJECTED.length + CORRECT_OPTS.length + CONNECTORS;
+const OPTIONAL_KEYS = OPTIONAL.map(id => "idea:" + id);
+function requiredConfirmed(){
+  return [...state.locked].filter(k => OPTIONAL_KEYS.indexOf(k) === -1).length;
+}
+
+const state = {
+  disposed:new Set(),      // idea ids moved to the disposal
+  plans:{p1:null,p2:null}, // plan slot -> option id
+  links:{},                // idea id -> plan slot
+  locked:new Set(),        // "idea:x" / "plan:p1" / "link:x"
+  attempts:0,
+  revealed:false,
+  selected:null            // {kind:"idea"|"option", id}
+};
+
+function lockedIdea(id){ return state.locked.has("idea:"+id); }
+function lockedPlan(s){ return state.locked.has("plan:"+s); }
+function lockedLink(id){ return state.locked.has("link:"+id); }
+function slotOfOption(id){ return PLAN_SLOTS.find(s => state.plans[s] === id) || null; }
+function looseOptions(){ return CONFIG.options.map(o => o.id).filter(id => !slotOfOption(id)); }
+
+/* ================================================================
+   RENDER
+   ================================================================ */
+const branchesEl = document.getElementById("branches");
+const disposalEl = document.getElementById("disposal");
+const optionsEl  = document.getElementById("options");
+
+document.getElementById("questText").textContent = CONFIG.questionQuest;
+
+function buildSkeleton(){
+  branchesEl.innerHTML = "";
+  CONFIG.branches.forEach(br => {
+    const wrap = document.createElement("div");
+    wrap.className = "branch";
+    wrap.dataset.colour = br.colour;
+
+    const l1 = document.createElement("div");
+    l1.className = "slot l1";
+    const l1card = document.createElement("div");
+    l1card.className = "card fixed l1text";
+    l1card.dataset.colour = br.colour;
+    l1card.textContent = br.label;
+    l1.appendChild(l1card);
+
+    const sub = document.createElement("div");
+    sub.className = "sublevel";
+    br.ideas.forEach((idea, i) => {
+      const s = document.createElement("div");
+      s.className = "slot";
+      s.dataset.slot = "s-" + br.id + "-" + i;
+      sub.appendChild(s);
+    });
+
+    wrap.appendChild(l1);
+    wrap.appendChild(sub);
+    branchesEl.appendChild(wrap);
+  });
+}
+
+function ideaCard(idea){
+  const el = document.createElement("div");
+  el.className = "card";
+  el.dataset.card = idea.id;
+  el.dataset.kind = "idea";
+  el.dataset.colour = idea.colour;
+  el.textContent = idea.text;
+  const fixed = lockedIdea(idea.id) || state.revealed;
+  el.classList.add(fixed ? "fixed" : "grab");
+  if (state.disposed.has(idea.id) && (lockedIdea(idea.id) || state.revealed)) el.classList.add("locked");
+  if (lockedLink(idea.id) || (state.revealed && state.links[idea.id])) el.classList.add("locked");
+  if (!fixed) { el.tabIndex = 0; el.setAttribute("role","button"); }
+  if (state.selected && state.selected.kind === "idea" && state.selected.id === idea.id)
+    el.classList.add("selected");
+  return el;
+}
+
+function optionCard(opt, slot){
+  const el = document.createElement("div");
+  el.className = "card plan";
+  el.dataset.card = opt.id;
+  el.dataset.kind = "option";
+  el.textContent = opt.text;
+  if (slot) el.dataset.plancolour = CONFIG.planSlotColours[slot];
+  const fixed = (slot && lockedPlan(slot)) || state.revealed;
+  el.classList.add(fixed ? "fixed" : "grab");
+  if (fixed && slot) el.classList.add("locked");
+  if (!fixed) { el.tabIndex = 0; el.setAttribute("role","button"); }
+  if (state.selected && state.selected.kind === "option" && state.selected.id === opt.id)
+    el.classList.add("selected");
+  return el;
+}
+
+function render(){
+  /* level-2 idea slots */
+  IDEA_SLOTS.forEach(slotId => {
+    const slotEl = document.querySelector('[data-slot="' + slotId + '"]');
+    const idea = Object.values(IDEAS).find(i => i.slot === slotId);
+    slotEl.innerHTML = "";
+    const away = state.disposed.has(idea.id);
+    slotEl.classList.toggle("filled", !away);
+    slotEl.classList.toggle("emptied", away);
+    if (!away) slotEl.appendChild(ideaCard(idea));
+  });
+
+  /* plan slots */
+  PLAN_SLOTS.forEach(s => {
+    const el = document.querySelector('[data-planslot="' + s + '"]');
+    const optId = state.plans[s];
+    el.innerHTML = "";
+    el.classList.toggle("filled", !!optId);
+    el.classList.toggle("armed", !!(state.selected && state.selected.kind === "option") && !optId);
+    el.classList.toggle("linkable", !!optId && !!(state.selected && state.selected.kind === "idea"));
+    if (optId) el.appendChild(optionCard(OPTIONS[optId], s));
+  });
+
+  /* disposal */
+  disposalEl.innerHTML = "";
+  const dumped = [...state.disposed];
+  if (!dumped.length) {
+    const p = document.createElement("p");
+    p.className = "bank-empty";
+    p.textContent = "Empty. Drag an idea here from the map.";
+    disposalEl.appendChild(p);
+  } else {
+    dumped.forEach(id => disposalEl.appendChild(ideaCard(IDEAS[id])));
+  }
+
+  /* options bank */
+  optionsEl.innerHTML = "";
+  const loose = looseOptions();
+  if (!loose.length) {
+    const p = document.createElement("p");
+    p.className = "bank-empty";
+    p.textContent = "All options are on the map.";
+    optionsEl.appendChild(p);
+  } else {
+    loose.forEach(id => optionsEl.appendChild(optionCard(OPTIONS[id], null)));
+  }
+
+  /* connector inventory */
+  const used = Object.keys(state.links).length;
+  const pEl = document.getElementById("pointers");
+  pEl.innerHTML = "";
+  for (let i = 0; i < CONNECTORS; i++) {
+    const s = document.createElementNS("http://www.w3.org/2000/svg","svg");
+    s.setAttribute("class","pointer" + (i < used ? " used" : ""));
+    s.setAttribute("width","82"); s.setAttribute("height","12");
+    s.setAttribute("viewBox","0 0 82 12");
+    const l = document.createElementNS("http://www.w3.org/2000/svg","line");
+    l.setAttribute("x1","0"); l.setAttribute("y1","6");
+    l.setAttribute("x2","70"); l.setAttribute("y2","6");
+    l.setAttribute("stroke","#005DC4"); l.setAttribute("stroke-width","2");
+    const h = document.createElementNS("http://www.w3.org/2000/svg","path");
+    h.setAttribute("d","M 70 1 L 81 6 L 70 11 Z");
+    h.setAttribute("fill","#005DC4");
+    s.appendChild(l); s.appendChild(h);
+    pEl.appendChild(s);
+  }
+  document.getElementById("pcount").textContent =
+    (CONNECTORS - used) + " of " + CONNECTORS + " indicators left";
+
+  /* controls */
+  const pips = document.getElementById("pips");
+  pips.innerHTML = "";
+  for (let i = 0; i < CONFIG.attemptsPerRound; i++) {
+    const d = document.createElement("span");
+    d.className = "pip" + (i < state.attempts ? " spent" : "");
+    pips.appendChild(d);
+  }
+  const confirmed = requiredConfirmed();
+  document.getElementById("counter").innerHTML = state.revealed
+    ? "Coaching team&rsquo;s version"
+    : "<b>" + confirmed + "</b> of " + TOTAL_CORRECT + " confirmed";
+  const anythingToCheck = state.disposed.size + Object.keys(state.plans).filter(s => state.plans[s]).length
+                          + Object.keys(state.links).length;
+  document.getElementById("checkBtn").disabled = state.revealed || anythingToCheck === state.locked.size;
+  document.getElementById("checkBtn").textContent = state.revealed ? "Version revealed" : "Check my work";
+
+  drawWires();
+}
+
+/* ================================================================
+   CONNECTOR ARROWS
+   ================================================================ */
+function drawWires(){
+  const svg = document.getElementById("wires");
+  const panel = document.getElementById("mapPanel");
+  if (!svg || !panel.getBoundingClientRect) return;
+  const box = panel.getBoundingClientRect();
+  if (!box.width) return;                       // not laid out yet
+  svg.setAttribute("viewBox", "0 0 " + box.width + " " + box.height);
+  svg.innerHTML = "";
+
+  const colour = { sunburst:"#FC6B27", moss:"#0E6347" };
+  const ids = Object.keys(state.links);
+  ids.forEach((ideaId, n) => {
+    const slot = state.links[ideaId];
+    const src = document.querySelector('[data-card="' + ideaId + '"]');
+    const tgt = document.querySelector('[data-planslot="' + slot + '"]');
+    if (!src || !tgt) return;
+    const a = src.getBoundingClientRect(), b = tgt.getBoundingClientRect();
+    if (!a.width || !b.width) return;
+    const x1 = a.right - box.left, y1 = a.top - box.top + a.height / 2;
+    const x2 = b.left  - box.left, y2 = b.top  - box.top + b.height / 2;
+    if (x2 <= x1) return;                       // stacked layout: no room for arrows
+    const c = colour[CONFIG.planSlotColours[slot]] || "#005DC4";
+    /* stagger each curve across the channel so arrows sharing it stay apart */
+    const span = x2 - x1;
+    const mid  = x1 + span * (0.34 + 0.10 * (n % 4));
+
+    const path = document.createElementNS("http://www.w3.org/2000/svg","path");
+    path.setAttribute("d", "M " + x1 + " " + y1 + " C " + mid + " " + y1 + ", " +
+                            mid + " " + y2 + ", " + (x2 - 9) + " " + y2);
+    path.setAttribute("fill","none");
+    path.setAttribute("stroke", c);
+    path.setAttribute("stroke-width","2.2");
+    path.setAttribute("opacity","0.95");
+    svg.appendChild(path);
+
+    const head = document.createElementNS("http://www.w3.org/2000/svg","path");
+    head.setAttribute("d","M " + (x2 - 9) + " " + (y2 - 5) + " L " + x2 + " " + y2 +
+                          " L " + (x2 - 9) + " " + (y2 + 5) + " Z");
+    head.setAttribute("fill", c);
+    svg.appendChild(head);
+  });
+}
+window.addEventListener("resize", drawWires);
+
+/* ================================================================
+   ACTIONS
+   ================================================================ */
+function dispose(ideaId){
+  if (lockedIdea(ideaId) || state.revealed) return;
+  state.disposed.add(ideaId);
+  delete state.links[ideaId];                  // an idea off the map carries no pointer
+  state.selected = null;
+  render();
+}
+function undispose(ideaId){
+  if (lockedIdea(ideaId) || state.revealed) return;
+  state.disposed.delete(ideaId);
+  state.selected = null;
+  render();
+}
+function placeOption(optId, slot){
+  if (state.revealed || lockedPlan(slot)) return;
+  const here = state.plans[slot];
+  if (here && lockedPlan(slot)) return;
+  const from = slotOfOption(optId);
+  if (from) state.plans[from] = null;
+  if (here) {                                  // displaced option goes back to the bank
+    Object.keys(state.links).forEach(i => { if (state.links[i] === slot) delete state.links[i]; });
+  }
+  state.plans[slot] = optId;
+  state.selected = null;
+  render();
+}
+function returnOption(optId){
+  if (state.revealed) return;
+  const slot = slotOfOption(optId);
+  if (!slot || lockedPlan(slot)) return;
+  state.plans[slot] = null;
+  Object.keys(state.links).forEach(i => { if (state.links[i] === slot) delete state.links[i]; });
+  state.selected = null;
+  render();
+}
+function link(ideaId, slot){
+  if (state.revealed || lockedLink(ideaId)) return;
+  if (!state.plans[slot]) return;                        // nothing to connect to yet
+  if (state.disposed.has(ideaId)) return;                // not on the map any more
+  const used = Object.keys(state.links).length;
+  if (!state.links[ideaId] && used >= CONNECTORS) {      // out of pointers
+    say("No indicators left. Select a connected idea again to take its pointer back.", "mixed");
+    return;
+  }
+  state.links[ideaId] = slot;
+  state.selected = null;
+  render();
+}
+function unlink(ideaId){
+  if (state.revealed || lockedLink(ideaId)) return false;
+  if (!state.links[ideaId]) return false;
+  delete state.links[ideaId];
+  state.selected = null;
+  render();
+  return true;
+}
+
+/* ================================================================
+   POINTER DRAG + SELECT
+   ================================================================ */
+let drag = null;
+
+document.addEventListener("pointerdown", e => {
+  const node = e.target.closest("[data-card]");
+  if (!node || state.revealed || node.classList.contains("fixed")) return;
+  e.preventDefault();
+  const r = node.getBoundingClientRect();
+  drag = { id:node.dataset.card, kind:node.dataset.kind, node,
+           startX:e.clientX, startY:e.clientY,
+           dx:e.clientX - r.left, dy:e.clientY - r.top, moved:false, ghost:null };
+  node.setPointerCapture?.(e.pointerId);
+});
+
+document.addEventListener("pointermove", e => {
+  if (!drag) return;
+  if (!drag.moved) {
+    if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < 6) return;
+    drag.moved = true;
+    const g = drag.node.cloneNode(true);
+    g.id = "ghost";
+    g.classList.remove("selected");
+    document.body.appendChild(g);
+    drag.ghost = g;
+    drag.node.classList.add("dragging");
+    state.selected = null;
+  }
+  drag.ghost.style.left = (e.clientX - drag.dx) + "px";
+  drag.ghost.style.top  = (e.clientY - drag.dy) + "px";
+  highlight(e.clientX, e.clientY);
+});
+
+function targetAt(x, y){
+  const g = document.getElementById("ghost");
+  if (g) g.style.display = "none";
+  const el = document.elementFromPoint(x, y);
+  if (g) g.style.display = "";
+  if (!el) return null;
+  if (el.closest("#disposalBank")) return { type:"disposal" };
+  const ps = el.closest("[data-planslot]");
+  if (ps) return { type:"planslot", slot:ps.dataset.planslot, node:ps };
+  if (el.closest("#options")) return { type:"optionbank" };
+  const slot = el.closest("[data-slot]");
+  if (slot) return { type:"mapslot", slot:slot.dataset.slot, node:slot };
+  return null;
+}
+function highlight(x, y){
+  document.querySelectorAll(".over").forEach(n => n.classList.remove("over"));
+  const t = targetAt(x, y);
+  if (!t) return;
+  if (t.type === "disposal") document.getElementById("disposal").classList.add("over");
+  else if (t.type === "planslot") t.node.classList.add("over");
+  else if (t.type === "optionbank") document.getElementById("options").classList.add("over");
+}
+
+document.addEventListener("pointerup", e => {
+  if (!drag) return;
+  const d = drag; drag = null;
+  document.querySelectorAll(".over").forEach(n => n.classList.remove("over"));
+
+  if (!d.moved) {                                   /* a tap = select / deselect */
+    const same = state.selected && state.selected.kind === d.kind && state.selected.id === d.id;
+    if (same) {
+      state.selected = null;
+      if (d.kind === "idea") unlink(d.id);          /* tapping a linked idea twice frees the pointer */
+      else render();
+    } else {
+      state.selected = { kind:d.kind, id:d.id };
+      render();
+    }
+    return;
+  }
+  d.ghost?.remove();
+  d.node.classList.remove("dragging");
+
+  const t = targetAt(e.clientX, e.clientY);
+  if (!t) { render(); return; }
+  if (d.kind === "idea") {
+    if (t.type === "disposal") dispose(d.id);
+    else if (t.type === "planslot") link(d.id, t.slot);
+    else if (t.type === "mapslot" && state.disposed.has(d.id) &&
+             IDEAS[d.id].slot === t.slot) undispose(d.id);
+    else render();
+  } else {
+    if (t.type === "planslot") placeOption(d.id, t.slot);
+    else if (t.type === "optionbank") returnOption(d.id);
+    else render();
+  }
+});
+
+/* click a target after selecting a card */
+document.addEventListener("click", e => {
+  const sel = state.selected;
+  if (!sel || e.target.closest("[data-card]")) return;
+  const ps = e.target.closest("[data-planslot]");
+  if (ps) {
+    if (sel.kind === "option") placeOption(sel.id, ps.dataset.planslot);
+    else link(sel.id, ps.dataset.planslot);
+    return;
+  }
+  if (e.target.closest("#disposalBank") && sel.kind === "idea") { dispose(sel.id); return; }
+  if (e.target.closest("#options") && sel.kind === "option")    { returnOption(sel.id); return; }
+  const ms = e.target.closest("[data-slot]");
+  if (ms && sel.kind === "idea" && state.disposed.has(sel.id) && IDEAS[sel.id].slot === ms.dataset.slot)
+    undispose(sel.id);
+});
+
+/* keyboard */
+document.addEventListener("keydown", e => {
+  if (e.key !== "Enter" && e.key !== " ") return;
+  const card = e.target.closest?.("[data-card]");
+  const ps   = e.target.closest?.("[data-planslot]");
+  if (card && !card.classList.contains("fixed")) {
+    e.preventDefault();
+    const same = state.selected && state.selected.id === card.dataset.card;
+    state.selected = same ? null : { kind:card.dataset.kind, id:card.dataset.card };
+    render();
+  } else if (ps && state.selected) {
+    e.preventDefault();
+    if (state.selected.kind === "option") placeOption(state.selected.id, ps.dataset.planslot);
+    else link(state.selected.id, ps.dataset.planslot);
+  }
+});
+
+/* ================================================================
+   CHECKING
+   ================================================================ */
+function evaluate(){
+  const r = { correct:[], wrong:[], notes:{} };
+
+  /* 1. ideas in the disposal */
+  state.disposed.forEach(id => {
+    if (IDEAS[id].rejected || IDEAS[id].optional) r.correct.push({ key:"idea:"+id, id });
+    else { r.wrong.push({ key:"idea:"+id, id, kind:"idea" }); r.notes.keptIdea = true; }
+  });
+
+  /* 2. options on the map */
+  PLAN_SLOTS.forEach(s => {
+    const optId = state.plans[s];
+    if (!optId) return;
+    if (OPTIONS[optId].correct) r.correct.push({ key:"plan:"+s, id:optId, slot:s });
+    else { r.wrong.push({ key:"plan:"+s, id:optId, slot:s, kind:"plan" }); r.notes.badPlan = true; }
+  });
+
+  /* 3. connectors */
+  Object.keys(state.links).forEach(ideaId => {
+    const slot = state.links[ideaId];
+    const optId = state.plans[slot];
+    const idea = IDEAS[ideaId];
+    const ok = !!optId && OPTIONS[optId].correct && !idea.rejected && idea.plan === optId;
+    if (ok) r.correct.push({ key:"link:"+ideaId, id:ideaId, slot });
+    else {
+      r.wrong.push({ key:"link:"+ideaId, id:ideaId, kind:"link" });
+      if (idea.rejected || idea.optional || !idea.plan) r.notes.linkedUnused = true;
+    }
+  });
+  return r;
+}
+
+function say(text, tone){
+  const f = document.getElementById("feedback");
+  f.className = "feedback show " + (tone || "");
+  f.textContent = text;
+}
+
+function check(){
+  if (state.revealed) return;
+  const r = evaluate();
+  r.correct.forEach(x => state.locked.add(x.key));
+  r.wrong.forEach(x => {
+    if (x.kind === "idea") state.disposed.delete(x.id);            // back onto the map
+    else if (x.kind === "plan") {
+      state.plans[x.slot] = null;                                  // back to the options bank
+      Object.keys(state.links).forEach(i => { if (state.links[i] === x.slot) delete state.links[i]; });
+    }
+    else if (x.kind === "link") delete state.links[x.id];          // pointer back to the bank
+  });
+  state.attempts++;
+  render();
+
+  r.wrong.forEach(x => {
+    const n = document.querySelector('[data-card="' + x.id + '"]');
+    if (n) { n.classList.add("rejected"); setTimeout(() => n.classList.remove("rejected"), 450); }
+  });
+
+  if (requiredConfirmed() === TOTAL_CORRECT) {
+    say("Both plans stand alone, every surviving idea feeds one of them, and the implausible ideas are " +
+        "out of the way. That is the convergent move the captains made.", "good");
+    document.getElementById("checkBtn").disabled = true;
+    return;
+  }
+
+  let msg = requiredConfirmed() + " of " + TOTAL_CORRECT + " confirmed and staying in place.";
+  if (r.wrong.length) msg += " " + r.wrong.length + (r.wrong.length === 1 ? " item went" : " items went") +
+                             " back.";
+  if (r.notes.badPlan)        msg += " One of the options you placed is not a plan the captains built.";
+  else if (r.notes.linkedUnused) msg += " A pointer starts from an idea that fed neither of the two plans.";
+  else if (r.notes.keptIdea)  msg += " An idea in the disposal was one the captains kept.";
+  say(msg, "mixed");
+
+  if (state.attempts >= CONFIG.attemptsPerRound) setTimeout(openModal, 500);
+}
+
+/* ================================================================
+   COACHING TEAM'S VERSION / RESET
+   ================================================================ */
+function reveal(){
+  state.revealed = true;
+  state.disposed = new Set(REJECTED);          // optional ideas are left standing
+  state.plans = { p1:CORRECT_OPTS[0], p2:CORRECT_OPTS[1] };
+  state.links = {};
+  LINKED_IDEAS.forEach(id => {
+    const slot = PLAN_SLOTS.find(s => state.plans[s] === IDEAS[id].plan);
+    if (slot) state.links[id] = slot;
+  });
+  state.locked = new Set();
+  state.selected = null;
+  render();
+  say("This is the version from the program coaching team. The implausible ideas are in the disposal, " +
+      "the two plans that stand alone are on the map, and each surviving idea points at the one plan it " +
+      "contributed to. One idea is still on the map with no pointer: it survived the cut but fed neither " +
+      "plan, and putting it in the disposal instead would have been just as good. Select Start new to " +
+      "build it again yourself.", "solution");
+}
+
+function openModal(){ document.getElementById("scrim").classList.add("open"); document.getElementById("yesBtn").focus(); }
+function closeModal(){ document.getElementById("scrim").classList.remove("open"); }
+
+document.getElementById("checkBtn").addEventListener("click", check);
+document.getElementById("yesBtn").addEventListener("click", () => { closeModal(); reveal(); });
+document.getElementById("noBtn").addEventListener("click", () => {
+  closeModal();
+  state.attempts = 0;
+  render();
+  say("Three more attempts. Everything already confirmed stays where it is.", "");
+});
+document.getElementById("resetBtn").addEventListener("click", () => {
+  state.disposed = new Set();
+  state.plans = { p1:null, p2:null };
+  state.links = {};
+  state.locked = new Set();
+  state.attempts = 0;
+  state.revealed = false;
+  state.selected = null;
+  document.getElementById("feedback").className = "feedback";
+  document.getElementById("feedback").textContent = "";
+  render();
+});
+
+buildSkeleton();
+render();
+requestAnimationFrame(drawWires);
+</script>
+</body>
+</html>
